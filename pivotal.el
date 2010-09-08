@@ -49,8 +49,10 @@
       (error "Wrong username or password."))))
 
 (defun pivotal-api-get (call)
-  (http-post-simple
-    (concat pivotal-url call)))
+  "Makes a GET call to the pivotal-tracker api."
+  (http-get-simple
+   (concat pivotal-url call)
+   (list (cons (quote "X-TrackerToken") pivotal-get-token))))
 
 (defun pivotal-parse-credentials-xml (credentials-xml)
   "Parse pivotal tracker xml for guid and id."
@@ -62,6 +64,24 @@
   (let ((ids (pivotal-parse-credentials-xml (pivotal-get-credentials-xml))))
     (setq pivotal-token (car ids))
     (setq pivotal-user-id (cdr ids))))
+
+
+;; HELPER FUNCTIONS.
+
+(defun http-get-simple (url &optional headers)
+  "Makes an http GET request to URL with a set of optional headers."
+  (let ((url-request-method "GET")
+        (url-request-extra-headers headers))
+    (let (header
+          data)  
+      (with-current-buffer
+          (url-retrieve-synchronously (concat pivotal-url "projects"))
+        (goto-char (point-min))
+        (if (search-forward-regexp "^$" nil t)
+            (setq header (buffer-substring (point-min) (point))
+                  data   (buffer-substring (1+ (point)) (point-max)))
+          (setq data (buffer-string))))
+      (cons data header))))
 
 (defun parse-xml-string (xml-string)
   "Parses a string of xml into a nice 'xml sexp"
