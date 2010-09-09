@@ -27,11 +27,32 @@
 (defvar pivotal-token nil
   "Contains your pivotal tracker token upon authentication.")
 
+(defun pivotal-api-get (call)
+  "Makes a GET call to the pivotal-tracker api. Returns SEXP of xml."
+  (parse-xml-string (pivotal-api-get-xml call)))
+
+(defun pivotal-api-get-xml (call)
+  (let ((api-url (concat pivotal-url call)))
+    (car (http-get-simple
+          api-url
+          (list (cons (quote "X-TrackerToken") (pivotal-get-token)))))))
+
+(defun pivotal-set-ids ()
+  (let ((ids (pivotal-parse-credentials-xml (pivotal-get-credentials-xml))))
+    (setq pivotal-token (car ids))
+    (setq pivotal-user-id (cdr ids))))
+
 (defun pivotal-get-token ()
   (if (string= pivotal-token nil)
       (progn (pivotal-set-ids)
              (pivotal-get-token))
     pivotal-token))
+
+(defun pivotal-get-projects ()
+  (pivotal-api-get "projects"))
+
+(defun pivotal-get-project-stories (story-id)
+  (pivotal-api-get (concat "projects/" story-id "/stories/")))
 
 (defun pivotal-get-credentials-xml ()
   "Retrieve the pivotal tracker credentials xml.
@@ -48,34 +69,65 @@
         (parse-xml-string (car response))
       (error "Wrong username or password."))))
 
-(defun pivotal-api-get (call)
-  "Makes a GET call to the pivotal-tracker api."
-  (http-get-simple
-   (concat pivotal-url call)
-   (list (cons (quote "X-TrackerToken") pivotal-get-token))))
-
 (defun pivotal-parse-credentials-xml (credentials-xml)
   "Parse pivotal tracker xml for guid and id."
   (cons
    (get-xml-element credentials-xml 'guid)
    (get-xml-element credentials-xml 'id)))
 
-(defun pivotal-set-ids ()
-  (let ((ids (pivotal-parse-credentials-xml (pivotal-get-credentials-xml))))
-    (setq pivotal-token (car ids))
-    (setq pivotal-user-id (cdr ids))))
+(defun pivotal-story-to-org (story-sexp)
+  (let (())))
+
+;; NOTES:
+"<story>
+    <id type=\\\"integer\\\">3630294</id>
+    <project_id type=\\\"integer\\\">38357</project_id>
+    <story_type>feature</story_type>
+    <url>http://www.pivotaltracker.com/story/show/3630294</url>
+    <estimate type=\\\"integer\\\">2</estimate>
+    <current_state>unscheduled</current_state>
+    <description></description>
+    <name>System-Wide Profiling</name>
+    <requested_by>Noah Pepper</requested_by>
+    <owned_by>Cooper Francis</owned_by>
+    <created_at type=\\\"datetime\\\">2010/05/22 00:40:06 UTC</created_at>
+    <updated_at type=\\\"datetime\\\">2010/06/24 17:01:40 UTC</updated_at>
+ </story>"
+
+;; UNSCHEDULED -> (unmarked)
+;; ACCEPTED -> TODO
+;; FINISHED -> DONE
+
+;;  * PIPELINE
+;;  ** CURRENT
+;;  *** TODO system-wide profiling  :feature:
+;;    :PROPERTIES:
+;;    :id:    blahblahlah
+;;    :project_id:
+;;    :url:
+;;    :estimate:
+;;    :description:
+;;    :requested_by:
+;;    :owned_by:
+;;    :created_at:
+;;    :updated_at: 
+;;  ** BACKLOG
+;;  ***
+;;  ** ICEBOX
+;;  *** 
 
 
 ;; HELPER FUNCTIONS.
+(defun xml-to-sexp (xml-string))
 
 (defun http-get-simple (url &optional headers)
   "Makes an http GET request to URL with a set of optional headers."
   (let ((url-request-method "GET")
         (url-request-extra-headers headers))
     (let (header
-          data)  
+          data)
       (with-current-buffer
-          (url-retrieve-synchronously (concat pivotal-url "projects"))
+          (url-retrieve-synchronously url)
         (goto-char (point-min))
         (if (search-forward-regexp "^$" nil t)
             (setq header (buffer-substring (point-min) (point))
