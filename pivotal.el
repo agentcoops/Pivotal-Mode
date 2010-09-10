@@ -75,32 +75,52 @@
    (get-xml-element credentials-xml 'guid)
    (get-xml-element credentials-xml 'id)))
 
+(defun pivotal-status-to-org-status (status)
+  (cond
+   ((string= status "accepted") "DONE")
+   ((string= status "started") "TODO")
+   ((string= status "unstarted") "TODO")
+   ((string= status "finished") "DONE")
+   ((string= status "delivered") "DONE")
+   ((string= status "unscheduled") "")
+   (t status)))
+
 (defun pivotal-story-to-org (story-sexp)
-  (let (())))
+  (let ((id  (get-story-element 'id story-sexp))
+        (name (get-story-element 'name story-sexp))
+        (type (get-story-element 'story_type story-sexp))
+        (estimate (get-story-element 'estimate story-sexp))
+        (status (get-story-element 'current_state story-sexp))
+        (user (get-story-element 'owned_by story-sexp)))
+    (pivotal-format-org-line
+     (pivotal-status-to-org-status status) name user type estimate)))
 
-;; NOTES:
-"<story>
-    <id type=\\\"integer\\\">3630294</id>
-    <project_id type=\\\"integer\\\">38357</project_id>
-    <story_type>feature</story_type>
-    <url>http://www.pivotaltracker.com/story/show/3630294</url>
-    <estimate type=\\\"integer\\\">2</estimate>
-    <current_state>unscheduled</current_state>
-    <description></description>
-    <name>System-Wide Profiling</name>
-    <requested_by>Noah Pepper</requested_by>
-    <owned_by>Cooper Francis</owned_by>
-    <created_at type=\\\"datetime\\\">2010/05/22 00:40:06 UTC</created_at>
-    <updated_at type=\\\"datetime\\\">2010/06/24 17:01:40 UTC</updated_at>
- </story>"
+(defun pivotal-format-org-line (state name user type priority)
+  (format "*** %s [#%s] %s :%s:%s:\n" state priority name type user))
 
-;; UNSCHEDULED -> (unmarked)
-;; ACCEPTED -> TODO
-;; FINISHED -> DONE
+(defun pivotal-display-project-stories (project-id)
+  (let ((new-stories (pivotal-get-project-stories project-id)))
+    (dolist (elt new-stories nil)
+      (cond
+       ((eq elt nil) nil)
+       ((stringp elt) nil)
+       ((listp elt) (insert (pivotal-story-to-org elt)))))))
+
+(defun pivotal-init-buffer ()
+  (insert "* Pipeline\n")
+  (insert "** Current\n"))
+
+(defun pivotal-mode ()
+  (interactive)
+  (pop-to-buffer "*Pivotal*" nil)
+  (kill-all-local-variables)
+  (org-mode)
+  (pivotal-init-buffer)
+  (pivotal-display-project-stories "38357"))
 
 ;;  * PIPELINE
 ;;  ** CURRENT
-;;  *** TODO system-wide profiling  :feature:
+;;  *** TODO system-wide profiling :feature: 
 ;;    :PROPERTIES:
 ;;    :id:    blahblahlah
 ;;    :project_id:
@@ -116,10 +136,7 @@
 ;;  ** ICEBOX
 ;;  *** 
 
-
 ;; HELPER FUNCTIONS.
-(defun xml-to-sexp (xml-string))
-
 (defun http-get-simple (url &optional headers)
   "Makes an http GET request to URL with a set of optional headers."
   (let ((url-request-method "GET")
@@ -144,5 +161,8 @@
 
 (defun get-xml-element (xml-sexp field)
   (nth 2 (car (xml-get-children xml-sexp field))))
+
+(defun get-story-element (field xml-sexp)
+  (nth 2 (assq field xml-sexp)))
 
 (provide 'pivotal-mode)
