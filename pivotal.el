@@ -20,8 +20,9 @@
 (require 'http-post-simple)
 (require 'xml)
 
-(defvar pivotal-url "https://www.pivotaltracker.com/services/v3/"
+(defconst pivotal-url "https://www.pivotaltracker.com/services/v3/"
   "Base url for pivotal tracker api.")
+
 (defvar pivotal-user-id nil
   "Contains your pivotal tracker user id upon authentication.")
 (defvar pivotal-token nil
@@ -118,8 +119,6 @@
   (pivotal-init-buffer)
   (pivotal-display-project-stories "38357"))
 
-;;  * PIPELINE
-;;  ** CURRENT
 ;;  *** TODO system-wide profiling :feature: 
 ;;    :PROPERTIES:
 ;;    :id:    blahblahlah
@@ -131,10 +130,7 @@
 ;;    :owned_by:
 ;;    :created_at:
 ;;    :updated_at: 
-;;  ** BACKLOG
-;;  ***
-;;  ** ICEBOX
-;;  *** 
+
 
 ;; HELPER FUNCTIONS.
 (defun http-get-simple (url &optional headers)
